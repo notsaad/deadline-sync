@@ -1,0 +1,31 @@
+{
+  "name": "deadline-sync",
+  "version": "1.0.0",
+  "description": "Sync Brightspace deadlines to Apple Reminders",
+  "type": "module",
+  "bin": {
+    "deadline-sync": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "cli": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "sql.js": "^1.10.0",
+    "commander": "^11.0.0",
+    "inquirer": "^9.0.0",
+    "pdf-parse": "^1.1.1",
+    "chrono-node": "^2.7.0",
+    "winston": "^3.11.0",
+    "dayjs": "^1.11.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "tsx": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "@types/inquirer": "^9.0.0"
+  }
+}
