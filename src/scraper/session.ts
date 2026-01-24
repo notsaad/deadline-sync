@@ -41,20 +41,39 @@ export async function saveSession(context: BrowserContext): Promise<void> {
 export async function isSessionValid(context: BrowserContext): Promise<boolean> {
   const page = await context.newPage();
   try {
+    // Use domcontentloaded instead of networkidle - Brightspace is slow
     await page.goto(`${config.brightspace.baseUrl}/d2l/home`, {
-      waitUntil: 'networkidle',
-      timeout: 30000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
     });
+
+    // Wait a bit for any redirects to happen
+    await page.waitForTimeout(2000);
 
     const url = page.url();
 
-    if (url.includes('login') || url.includes('adfs') || url.includes('auth')) {
+    // Check if redirected to login
+    if (url.includes('login') || url.includes('adfs') || url.includes('auth') || url.includes('idp')) {
       logger.info('Session expired - redirected to login');
       return false;
     }
 
-    const hasDashboard = await page.locator('.d2l-page-header, .d2l-homepage, [class*="homepage"]').count() > 0;
-    return hasDashboard;
+    // If we're still on brightspace domain with d2l path, session is valid
+    if (url.includes('brightspace.com/d2l')) {
+      logger.info('Session is valid');
+      return true;
+    }
+
+    // Fallback: check for dashboard elements
+    try {
+      await page.waitForSelector('.d2l-page-header, .d2l-homepage, [class*="homepage"], [class*="course"]', {
+        timeout: 10000,
+      });
+      return true;
+    } catch {
+      // If no dashboard elements found, check URL again
+      return page.url().includes('brightspace.com/d2l');
+    }
   } catch (error) {
     logger.error(`Session validation failed: ${error}`);
     return false;

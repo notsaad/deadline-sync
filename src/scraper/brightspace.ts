@@ -31,8 +31,12 @@ export class BrightspaceScraper {
   async getCourses(): Promise<Course[]> {
     if (!this.page) throw new Error('Scraper not initialized');
 
-    await this.page.goto(`${config.brightspace.baseUrl}/d2l/home`);
-    await this.page.waitForLoadState('networkidle');
+    await this.page.goto(`${config.brightspace.baseUrl}/d2l/home`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
+    // Give page time to load dynamic content
+    await this.page.waitForTimeout(3000);
 
     const courses: Course[] = [];
 
