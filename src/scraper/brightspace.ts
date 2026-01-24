@@ -23,21 +23,50 @@ export class BrightspaceScraper {
     this.page = await this.context.newPage();
   }
 
+  private async ensurePage(): Promise<Page> {
+    // Check if page is still usable
+    if (this.page) {
+      try {
+        // Simple check to see if page is still valid
+        await this.page.evaluate(() => true);
+        return this.page;
+      } catch {
+        // Page is closed or crashed, recreate it
+        logger.warn('Page was closed, recreating...');
+      }
+    }
+
+    if (!this.context) {
+      throw new Error('Context not initialized');
+    }
+
+    this.page = await this.context.newPage();
+    return this.page;
+  }
+
   async close(): Promise<void> {
-    if (this.page) await this.page.close();
-    if (this.context) await this.context.browser()?.close();
+    try {
+      if (this.page) await this.page.close();
+    } catch {
+      // Page might already be closed
+    }
+    try {
+      if (this.context) await this.context.browser()?.close();
+    } catch {
+      // Browser might already be closed
+    }
   }
 
   async getCourses(): Promise<Course[]> {
-    if (!this.page) throw new Error('Scraper not initialized');
+    const page = await this.ensurePage();
 
     // Navigate to the enrollments page with "current" filter for active courses only
-    await this.page.goto(`${config.brightspace.baseUrl}/d2l/le/manageCourses/widget/myCourses/6605/PinnedCourses`, {
+    await page.goto(`${config.brightspace.baseUrl}/d2l/le/manageCourses/widget/myCourses/6605/PinnedCourses`, {
       waitUntil: 'domcontentloaded',
       timeout: 60000,
     });
     // Give page time to load dynamic content
-    await this.page.waitForTimeout(3000);
+    await page.waitForTimeout(3000);
 
     const courses: Course[] = [];
 
@@ -53,7 +82,7 @@ export class BrightspaceScraper {
 
     for (const selector of courseSelectors) {
       try {
-        const elements = await this.page.locator(selector).all();
+        const elements = await page.locator(selector).all();
         if (elements.length === 0) continue;
 
         for (const element of elements) {
@@ -90,15 +119,15 @@ export class BrightspaceScraper {
 
     // Fallback: try the homepage My Courses widget
     if (courses.length === 0) {
-      await this.page.goto(`${config.brightspace.baseUrl}/d2l/home`, {
+      await page.goto(`${config.brightspace.baseUrl}/d2l/home`, {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
-      await this.page.waitForTimeout(3000);
+      await page.waitForTimeout(3000);
 
       // Look for course cards on homepage (typically shows current courses)
       try {
-        const cards = await this.page.locator('.d2l-card, [class*="course-card"], d2l-card').all();
+        const cards = await page.locator('.d2l-card, [class*="course-card"], d2l-card').all();
         for (const card of cards) {
           try {
             const linkEl = card.locator('a').first();
@@ -133,7 +162,7 @@ export class BrightspaceScraper {
     // If still no courses, try all course links but filter by semester
     if (courses.length === 0) {
       try {
-        const courseLinks = await this.page.locator('a[href*="/d2l/home/"]').all();
+        const courseLinks = await page.locator('a[href*="/d2l/home/"]').all();
         for (const link of courseLinks) {
           const href = await link.getAttribute('href');
           const text = await link.textContent();
@@ -212,19 +241,18 @@ export class BrightspaceScraper {
   }
 
   async getAssignments(course: Course): Promise<Assignment[]> {
-    if (!this.page) throw new Error('Scraper not initialized');
-
     const assignments: Assignment[] = [];
 
     // Try assignments/dropbox page
     try {
-      await this.page.goto(
+      const page = await this.ensurePage();
+      await page.goto(
         `${config.brightspace.baseUrl}/d2l/lms/dropbox/user/folders_list.d2l?ou=${course.id}`,
         { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
-      await this.page.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
-      const rows = await this.page.locator('table tbody tr, .d2l-table tbody tr, .d_ich').all();
+      const rows = await page.locator('table tbody tr, .d2l-table tbody tr, .d_ich').all();
 
       for (const row of rows) {
         try {
@@ -270,13 +298,14 @@ export class BrightspaceScraper {
 
     // Try quizzes page
     try {
-      await this.page.goto(
+      const page = await this.ensurePage();
+      await page.goto(
         `${config.brightspace.baseUrl}/d2l/lms/quizzing/user/quizzes_list.d2l?ou=${course.id}`,
         { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
-      await this.page.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
-      const rows = await this.page.locator('table tbody tr, .d2l-table tbody tr').all();
+      const rows = await page.locator('table tbody tr, .d2l-table tbody tr').all();
 
       for (const row of rows) {
         try {
@@ -318,13 +347,14 @@ export class BrightspaceScraper {
 
     // Try calendar/upcoming page
     try {
-      await this.page.goto(
+      const page = await this.ensurePage();
+      await page.goto(
         `${config.brightspace.baseUrl}/d2l/le/calendar/${course.id}`,
         { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
-      await this.page.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
-      const events = await this.page.locator('.d2l-calendar-event, [class*="event"]').all();
+      const events = await page.locator('.d2l-calendar-event, [class*="event"]').all();
 
       for (const event of events) {
         try {
