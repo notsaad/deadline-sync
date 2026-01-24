@@ -281,15 +281,17 @@ export class BrightspaceScraper {
             const dueDate = this.parseDate(dateText);
             if (dueDate && dueDate > new Date()) {
               const id = this.generateId(course.id, title, dueDate);
-              assignments.push({
-                id,
-                courseId: course.id,
-                courseName: course.name,
-                title: title.trim(),
-                dueDate,
-                type: 'assignment',
-                source: 'brightspace',
-              });
+              if (!assignments.some(a => a.id === id)) {
+                assignments.push({
+                  id,
+                  courseId: course.id,
+                  courseName: course.name,
+                  title: title.trim(),
+                  dueDate,
+                  type: 'assignment',
+                  source: 'brightspace',
+                });
+              }
             }
           }
         } catch {
@@ -335,15 +337,17 @@ export class BrightspaceScraper {
             const dueDate = this.parseDate(dateText);
             if (dueDate && dueDate > new Date()) {
               const id = this.generateId(course.id, title, dueDate);
-              assignments.push({
-                id,
-                courseId: course.id,
-                courseName: course.name,
-                title: title.trim(),
-                dueDate,
-                type: 'quiz',
-                source: 'brightspace',
-              });
+              if (!assignments.some(a => a.id === id)) {
+                assignments.push({
+                  id,
+                  courseId: course.id,
+                  courseName: course.name,
+                  title: title.trim(),
+                  dueDate,
+                  type: 'quiz',
+                  source: 'brightspace',
+                });
+              }
             }
           }
         } catch {
