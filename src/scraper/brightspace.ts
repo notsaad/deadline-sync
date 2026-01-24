@@ -220,8 +220,9 @@ export class BrightspaceScraper {
     try {
       await this.page.goto(
         `${config.brightspace.baseUrl}/d2l/lms/dropbox/user/folders_list.d2l?ou=${course.id}`,
-        { waitUntil: 'networkidle', timeout: 15000 }
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
+      await this.page.waitForTimeout(2000);
 
       const rows = await this.page.locator('table tbody tr, .d2l-table tbody tr, .d_ich').all();
 
@@ -271,8 +272,9 @@ export class BrightspaceScraper {
     try {
       await this.page.goto(
         `${config.brightspace.baseUrl}/d2l/lms/quizzing/user/quizzes_list.d2l?ou=${course.id}`,
-        { waitUntil: 'networkidle', timeout: 15000 }
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
+      await this.page.waitForTimeout(2000);
 
       const rows = await this.page.locator('table tbody tr, .d2l-table tbody tr').all();
 
@@ -318,8 +320,9 @@ export class BrightspaceScraper {
     try {
       await this.page.goto(
         `${config.brightspace.baseUrl}/d2l/le/calendar/${course.id}`,
-        { waitUntil: 'networkidle', timeout: 15000 }
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
+      await this.page.waitForTimeout(2000);
 
       const events = await this.page.locator('.d2l-calendar-event, [class*="event"]').all();
 
