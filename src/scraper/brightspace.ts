@@ -242,6 +242,7 @@ export class BrightspaceScraper {
 
   async getAssignments(course: Course): Promise<Assignment[]> {
     const assignments: Assignment[] = [];
+    const ELEMENT_TIMEOUT = 5000; // 5 second timeout for element operations
 
     // Try assignments/dropbox page
     try {
@@ -256,8 +257,10 @@ export class BrightspaceScraper {
 
       for (const row of rows) {
         try {
-          const titleEl = await row.locator('a, .d2l-link, .d2l-heading').first();
-          const title = await titleEl.textContent();
+          const titleLocator = row.locator('a, .d2l-link, .d2l-heading').first();
+          // Check if element exists before getting text
+          if (await titleLocator.count() === 0) continue;
+          const title = await titleLocator.textContent({ timeout: ELEMENT_TIMEOUT });
 
           // Look for date in various places
           let dateText = '';
@@ -265,8 +268,9 @@ export class BrightspaceScraper {
 
           for (const dateSel of dateSelectors) {
             try {
-              const dateEl = row.locator(dateSel).first();
-              dateText = (await dateEl.textContent()) || '';
+              const dateLocator = row.locator(dateSel).first();
+              if (await dateLocator.count() === 0) continue;
+              dateText = (await dateLocator.textContent({ timeout: ELEMENT_TIMEOUT })) || '';
               if (dateText && this.parseDate(dateText)) break;
             } catch {
               // Try next
@@ -309,16 +313,21 @@ export class BrightspaceScraper {
 
       for (const row of rows) {
         try {
-          const titleEl = await row.locator('a, .d2l-link').first();
-          const title = await titleEl.textContent();
+          const titleLocator = row.locator('a, .d2l-link').first();
+          if (await titleLocator.count() === 0) continue;
+          const title = await titleLocator.textContent({ timeout: ELEMENT_TIMEOUT });
 
           let dateText = '';
           const cells = await row.locator('td').all();
           for (const cell of cells) {
-            const text = await cell.textContent();
-            if (text && this.parseDate(text)) {
-              dateText = text;
-              break;
+            try {
+              const text = await cell.textContent({ timeout: ELEMENT_TIMEOUT });
+              if (text && this.parseDate(text)) {
+                dateText = text;
+                break;
+              }
+            } catch {
+              // Skip this cell
             }
           }
 
@@ -358,8 +367,8 @@ export class BrightspaceScraper {
 
       for (const event of events) {
         try {
-          const title = await event.textContent();
-          const dateAttr = await event.getAttribute('data-date');
+          const title = await event.textContent({ timeout: ELEMENT_TIMEOUT });
+          const dateAttr = await event.getAttribute('data-date', { timeout: ELEMENT_TIMEOUT });
 
           if (title && dateAttr) {
             const dueDate = new Date(dateAttr);
