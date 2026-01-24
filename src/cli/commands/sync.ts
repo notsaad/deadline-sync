@@ -67,9 +67,16 @@ export const syncCommand = new Command('sync')
       if (options.dryRun) {
         console.log('DRY RUN - Would create these reminders:\n');
         for (const assignment of newAssignments) {
-          console.log(`  - ${assignment.courseName}: ${assignment.title}`);
-          console.log(`    Due: ${assignment.dueDate.toLocaleDateString()}`);
+          const remindDate = new Date(assignment.dueDate);
+          remindDate.setDate(remindDate.getDate() - config.reminders.advanceDays);
+
+          console.log(`  [${assignment.type.toUpperCase()}] ${assignment.title}`);
+          console.log(`    Course: ${assignment.courseName}`);
+          console.log(`    Due: ${assignment.dueDate.toLocaleDateString()} at ${assignment.dueDate.toLocaleTimeString()}`);
+          console.log(`    Remind: ${remindDate.toLocaleDateString()} (${config.reminders.advanceDays} days before)`);
+          console.log('');
         }
+        console.log(`Total: ${newAssignments.length} reminders would be created in "${config.reminders.listName}" list`);
         return;
       }
 
