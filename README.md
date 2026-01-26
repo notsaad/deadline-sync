@@ -22,44 +22,44 @@ npx playwright install chromium
 ### Login to Brightspace
 
 ```bash
-bun run login
+bun run cli login
 ```
 
 Opens a browser window for authentication (supports 2FA). Session is saved for 24 hours.
 
 ```bash
-bun run login --status   # Check if session is valid
-bun run login --clear    # Clear saved session
+bun run cli login --status   # Check if session is valid
+bun run cli login --clear    # Clear saved session
 ```
 
 ### Sync Deadlines
 
 ```bash
-bun run sync
+bun run cli sync
 ```
 
 Fetches all deadlines from Brightspace and creates Apple Reminders.
 
 ```bash
-bun run sync --dry-run   # Preview without creating reminders
+bun run cli sync --dry-run   # Preview without creating reminders
 ```
 
 ### Check Status
 
 ```bash
-bun run status
+bun run cli status
 ```
 
 Shows session validity, total synced reminders, and upcoming deadlines.
 
 ```bash
-bun run status --events  # List all synced deadlines with due dates
+bun run cli status --events  # List all synced deadlines with due dates
 ```
 
 ### Parse Syllabus PDF
 
 ```bash
-bun run syllabus add <file.pdf> --course "Course Name"
+bun run cli syllabus add <file.pdf> --course "Course Name"
 ```
 
 Extracts dates from a syllabus PDF and interactively creates reminders for each detected deadline.
