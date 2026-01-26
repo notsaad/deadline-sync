@@ -3,6 +3,7 @@ import { loginCommand } from './commands/login.js';
 import { syncCommand } from './commands/sync.js';
 import { syllabusCommand } from './commands/syllabus.js';
 import { statusCommand } from './commands/status.js';
+import { resetCommand } from './commands/reset.js';
 
 export function createCLI(): Command {
   const program = new Command();
@@ -16,6 +17,7 @@ export function createCLI(): Command {
   program.addCommand(syncCommand);
   program.addCommand(syllabusCommand);
   program.addCommand(statusCommand);
+  program.addCommand(resetCommand);
 
   return program;
 }
