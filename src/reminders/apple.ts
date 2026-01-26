@@ -35,7 +35,7 @@ export function ensureListExists(listName: string): void {
 
 export function createReminder(assignment: Assignment): void {
   const listName = config.reminders.listName;
-  const title = `${assignment.courseName}: ${assignment.title}`;
+  const title = `${assignment.courseName} - ${assignment.title}`;
   const notes = assignment.description || `Due: ${assignment.dueDate.toLocaleDateString()}`;
 
   const dueDate = assignment.dueDate;
