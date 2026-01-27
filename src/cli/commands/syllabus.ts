@@ -16,6 +16,7 @@ syllabusCommand
   .command('add <file>')
   .description('Add dates from a syllabus PDF')
   .requiredOption('-c, --course <name>', 'Course name')
+  .option('--dry-run', 'Show what would be synced without creating reminders')
   .action(async (file, options) => {
     try {
       if (!fs.existsSync(file)) {
@@ -50,6 +51,22 @@ syllabusCommand
 
       if (newEvents.length === 0) {
         console.log('All confirmed dates are already synced.');
+        return;
+      }
+
+      if (options.dryRun) {
+        console.log('\nDRY RUN - Would create these reminders:\n');
+        for (const event of newEvents) {
+          const remindDate = new Date(event.dueDate);
+          remindDate.setDate(remindDate.getDate() - config.reminders.advanceDays);
+
+          console.log(`  [${event.type.toUpperCase()}] ${event.title}`);
+          console.log(`    Course: ${event.courseName}`);
+          console.log(`    Due: ${event.dueDate.toLocaleDateString()} at ${event.dueDate.toLocaleTimeString()}`);
+          console.log(`    Remind: ${remindDate.toLocaleDateString()} (${config.reminders.advanceDays} days before)`);
+          console.log('');
+        }
+        console.log(`Total: ${newEvents.length} reminders would be created in "${config.reminders.listName}" list`);
         return;
       }
 
