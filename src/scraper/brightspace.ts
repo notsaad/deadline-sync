@@ -4,6 +4,17 @@ import { logger } from '../utils/logger.js';
 import { Assignment, Course } from '../types/index.js';
 import { loadSession, isSessionValid } from './session.js';
 import { createHash } from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+// Keywords to identify syllabus files
+const SYLLABUS_KEYWORDS = [
+  'syllabus',
+  'course outline',
+  'course overview',
+  'plan de cours',  // French
+  'aperçu du cours',
+];
 
 export class BrightspaceScraper {
   private context: BrowserContext | null = null;
@@ -401,6 +412,170 @@ export class BrightspaceScraper {
 
     logger.info(`Found ${assignments.length} upcoming items in ${course.name}`);
     return assignments;
+  }
+
+async findSyllabus(course: Course): Promise<string | null> {
+    const page = await this.ensurePage();
+    const ELEMENT_TIMEOUT = 5000;
+
+    // Ensure syllabi download directory exists
+    const syllabusDir = path.join(config.paths.dataDir, 'syllabi');
+    if (!fs.existsSync(syllabusDir)) {
+      fs.mkdirSync(syllabusDir, { recursive: true });
+    }
+
+    // Generate a safe filename from course name
+    const safeCourseName = course.name
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .substring(0, 50);
+    const outputPath = path.join(syllabusDir, `${safeCourseName}_syllabus.pdf`);
+
+    // If we already have this syllabus, return the cached version
+    if (fs.existsSync(outputPath)) {
+      logger.info(`Using cached syllabus for ${course.name}`);
+      return outputPath;
+    }
+
+    try {
+      // Navigate to course content page
+      await page.goto(
+        `${config.brightspace.baseUrl}/d2l/le/content/${course.id}/Home`,
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
+      );
+      await page.waitForTimeout(3000);
+
+      // Look for syllabus links in the content area
+      const allLinks = await page.locator('a').all();
+
+      for (const link of allLinks) {
+        try {
+          const text = await link.textContent({ timeout: ELEMENT_TIMEOUT });
+          const href = await link.getAttribute('href', { timeout: ELEMENT_TIMEOUT });
+
+          if (!text || !href) continue;
+
+          const lowerText = text.toLowerCase();
+
+          // Check if this link matches syllabus keywords
+          const isSyllabus = SYLLABUS_KEYWORDS.some(keyword =>
+            lowerText.includes(keyword.toLowerCase())
+          );
+
+          if (isSyllabus) {
+            logger.info(`Found potential syllabus: "${text}" in ${course.name}`);
+
+            // Check if it's a direct PDF link
+            if (href.includes('.pdf') || href.includes('/viewContent/')) {
+              const downloaded = await this.downloadSyllabus(page, href, outputPath);
+              if (downloaded) {
+                return outputPath;
+              }
+            }
+
+            // Try clicking the link to see if it leads to a PDF
+            try {
+              const [download] = await Promise.all([
+                page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+                link.click({ timeout: ELEMENT_TIMEOUT }),
+              ]);
+
+              if (download) {
+                await download.saveAs(outputPath);
+                logger.info(`Downloaded syllabus for ${course.name}`);
+                return outputPath;
+              }
+
+              // Check if we navigated to a PDF viewer page
+              await page.waitForTimeout(2000);
+              const currentUrl = page.url();
+
+              if (currentUrl.includes('.pdf') || currentUrl.includes('/viewContent/')) {
+                const downloaded = await this.downloadSyllabus(page, currentUrl, outputPath);
+                if (downloaded) {
+                  return outputPath;
+                }
+              }
+
+              // Go back to content page to continue searching
+              await page.goto(
+                `${config.brightspace.baseUrl}/d2l/le/content/${course.id}/Home`,
+                { waitUntil: 'domcontentloaded', timeout: 30000 }
+              );
+              await page.waitForTimeout(2000);
+            } catch {
+              // Continue searching
+            }
+          }
+        } catch {
+          // Skip this link
+        }
+      }
+
+      // Also check the course homepage for syllabus
+      await page.goto(
+        `${config.brightspace.baseUrl}/d2l/home/${course.id}`,
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
+      );
+      await page.waitForTimeout(2000);
+
+      const homeLinks = await page.locator('a').all();
+      for (const link of homeLinks) {
+        try {
+          const text = await link.textContent({ timeout: ELEMENT_TIMEOUT });
+          if (!text) continue;
+
+          const lowerText = text.toLowerCase();
+          const isSyllabus = SYLLABUS_KEYWORDS.some(keyword =>
+            lowerText.includes(keyword.toLowerCase())
+          );
+
+          if (isSyllabus) {
+            const href = await link.getAttribute('href', { timeout: ELEMENT_TIMEOUT });
+            if (href && (href.includes('.pdf') || href.includes('/viewContent/'))) {
+              const downloaded = await this.downloadSyllabus(page, href, outputPath);
+              if (downloaded) {
+                return outputPath;
+              }
+            }
+          }
+        } catch {
+          // Skip
+        }
+      }
+
+      logger.info(`No syllabus found for ${course.name}`);
+      return null;
+    } catch (error) {
+      logger.warn(`Error searching for syllabus in ${course.name}: ${error}`);
+      return null;
+    }
+  }
+
+  private async downloadSyllabus(page: Page, url: string, outputPath: string): Promise<boolean> {
+    try {
+      // Handle relative URLs
+      const fullUrl = url.startsWith('http') ? url : `${config.brightspace.baseUrl}${url}`;
+
+      // Try to download directly
+      const response = await page.context().request.get(fullUrl);
+
+      if (response.ok()) {
+        const contentType = response.headers()['content-type'] || '';
+
+        if (contentType.includes('pdf') || fullUrl.includes('.pdf')) {
+          const buffer = await response.body();
+          fs.writeFileSync(outputPath, buffer);
+          logger.info(`Downloaded syllabus to ${outputPath}`);
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      logger.warn(`Failed to download syllabus from ${url}: ${error}`);
+      return false;
+    }
   }
 
   private parseDate(dateText: string): Date | null {
