@@ -465,15 +465,7 @@ async findSyllabus(course: Course): Promise<string | null> {
           if (isSyllabus) {
             logger.info(`Found potential syllabus: "${text}" in ${course.name}`);
 
-            // Check if it's a direct PDF link
-            if (href.includes('.pdf') || href.includes('/viewContent/')) {
-              const downloaded = await this.downloadSyllabus(page, href, outputPath);
-              if (downloaded) {
-                return outputPath;
-              }
-            }
-
-            // Try clicking the link to see if it leads to a PDF
+            // Try clicking the link and handling whatever happens
             try {
               const [download] = await Promise.all([
                 page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
@@ -486,15 +478,14 @@ async findSyllabus(course: Course): Promise<string | null> {
                 return outputPath;
               }
 
-              // Check if we navigated to a PDF viewer page
+              // No direct download - we're probably on a viewer page now
               await page.waitForTimeout(2000);
               const currentUrl = page.url();
 
-              if (currentUrl.includes('.pdf') || currentUrl.includes('/viewContent/')) {
-                const downloaded = await this.downloadSyllabus(page, currentUrl, outputPath);
-                if (downloaded) {
-                  return outputPath;
-                }
+              // Try to download from the current page (viewer page)
+              const downloaded = await this.downloadSyllabus(page, currentUrl, outputPath);
+              if (downloaded) {
+                return outputPath;
               }
 
               // Go back to content page to continue searching
@@ -557,18 +548,94 @@ async findSyllabus(course: Course): Promise<string | null> {
       // Handle relative URLs
       const fullUrl = url.startsWith('http') ? url : `${config.brightspace.baseUrl}${url}`;
 
-      // Try to download directly
-      const response = await page.context().request.get(fullUrl);
-
-      if (response.ok()) {
-        const contentType = response.headers()['content-type'] || '';
-
-        if (contentType.includes('pdf') || fullUrl.includes('.pdf')) {
-          const buffer = await response.body();
-          fs.writeFileSync(outputPath, buffer);
-          logger.info(`Downloaded syllabus to ${outputPath}`);
-          return true;
+      // First, try direct download via request API
+      try {
+        const response = await page.context().request.get(fullUrl);
+        if (response.ok()) {
+          const contentType = response.headers()['content-type'] || '';
+          if (contentType.includes('pdf')) {
+            const buffer = await response.body();
+            fs.writeFileSync(outputPath, buffer);
+            logger.info(`Downloaded syllabus to ${outputPath}`);
+            return true;
+          }
         }
+      } catch {
+        // Direct download failed, try navigating to the page
+      }
+
+      // Navigate to the content page (Brightspace viewer)
+      await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(2000);
+
+      // Look for download button in Brightspace content viewer
+      const downloadSelectors = [
+        'a[download]',
+        'button[aria-label*="download" i]',
+        'a[aria-label*="download" i]',
+        'd2l-button-icon[icon*="download" i]',
+        '[class*="download"]',
+        'a[href*="download"]',
+        // Brightspace specific selectors
+        '.d2l-fileviewer-download',
+        'd2l-dropdown-button-subtle',
+        'a[href*="/content/enforced/"]',
+      ];
+
+      for (const selector of downloadSelectors) {
+        try {
+          const downloadBtn = page.locator(selector).first();
+          if (await downloadBtn.count() > 0) {
+            // Try to get direct download link
+            const href = await downloadBtn.getAttribute('href', { timeout: 2000 }).catch(() => null);
+
+            if (href && (href.includes('.pdf') || href.includes('/content/enforced/'))) {
+              const downloadUrl = href.startsWith('http') ? href : `${config.brightspace.baseUrl}${href}`;
+              const response = await page.context().request.get(downloadUrl);
+              if (response.ok()) {
+                const buffer = await response.body();
+                fs.writeFileSync(outputPath, buffer);
+                logger.info(`Downloaded syllabus to ${outputPath}`);
+                return true;
+              }
+            }
+
+            // Try clicking the download button
+            const [download] = await Promise.all([
+              page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+              downloadBtn.click({ timeout: 5000 }).catch(() => null),
+            ]);
+
+            if (download) {
+              await download.saveAs(outputPath);
+              logger.info(`Downloaded syllabus via button to ${outputPath}`);
+              return true;
+            }
+          }
+        } catch {
+          // Try next selector
+        }
+      }
+
+      // Check if page itself is showing a PDF (embedded or iframe)
+      try {
+        const frameSrc = await page.locator('iframe[src*=".pdf"], iframe[src*="viewContent"]').first()
+          .getAttribute('src', { timeout: 2000 });
+        if (frameSrc) {
+          const pdfUrl = frameSrc.startsWith('http') ? frameSrc : `${config.brightspace.baseUrl}${frameSrc}`;
+          const response = await page.context().request.get(pdfUrl);
+          if (response.ok()) {
+            const contentType = response.headers()['content-type'] || '';
+            if (contentType.includes('pdf')) {
+              const buffer = await response.body();
+              fs.writeFileSync(outputPath, buffer);
+              logger.info(`Downloaded syllabus from iframe to ${outputPath}`);
+              return true;
+            }
+          }
+        }
+      } catch {
+        // No iframe found
       }
 
       return false;
