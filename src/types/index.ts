@@ -8,7 +8,7 @@ export interface Assignment {
   description?: string;
   dueDate: Date;
   url?: string;
-  type: 'assignment' | 'quiz' | 'exam' | 'discussion' | 'other';
+  type: 'assignment' | 'quiz' | 'exam' | 'discussion' | 'reading' | 'other';
   source: 'brightspace' | 'syllabus';
 }
 

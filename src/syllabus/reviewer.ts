@@ -40,7 +40,7 @@ export async function reviewExtractedDates(
         type: 'list',
         name: 'type',
         message: 'Type:',
-        choices: ['assignment', 'quiz', 'exam', 'other'],
+        choices: ['exam', 'quiz', 'reading', 'assignment', 'other'],
         default: 'assignment',
         when: (ans) => ans.include,
       },
