@@ -103,9 +103,9 @@ syllabusCommand
               for (const event of newEvents) {
                 const remindDate = new Date(event.dueDate);
                 remindDate.setDate(remindDate.getDate() - config.reminders.advanceDays);
+                const typeLabel = event.type.charAt(0).toUpperCase() + event.type.slice(1);
 
-                console.log(`  [${event.type.toUpperCase()}] ${event.title}`);
-                console.log(`    Course: ${event.courseName}`);
+                console.log(`  ${event.courseName} - ${typeLabel} - ${event.title}`);
                 console.log(`    Due: ${event.dueDate.toLocaleDateString()} at ${event.dueDate.toLocaleTimeString()}`);
                 console.log(`    Remind: ${remindDate.toLocaleDateString()} (${config.reminders.advanceDays} days before)`);
                 console.log('');
@@ -204,9 +204,9 @@ syllabusCommand
         for (const event of newEvents) {
           const remindDate = new Date(event.dueDate);
           remindDate.setDate(remindDate.getDate() - config.reminders.advanceDays);
+          const typeLabel = event.type.charAt(0).toUpperCase() + event.type.slice(1);
 
-          console.log(`  [${event.type.toUpperCase()}] ${event.title}`);
-          console.log(`    Course: ${event.courseName}`);
+          console.log(`  ${event.courseName} - ${typeLabel} - ${event.title}`);
           console.log(`    Due: ${event.dueDate.toLocaleDateString()} at ${event.dueDate.toLocaleTimeString()}`);
           console.log(`    Remind: ${remindDate.toLocaleDateString()} (${config.reminders.advanceDays} days before)`);
           console.log('');

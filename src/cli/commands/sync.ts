@@ -70,8 +70,8 @@ export const syncCommand = new Command('sync')
           const remindDate = new Date(assignment.dueDate);
           remindDate.setDate(remindDate.getDate() - config.reminders.advanceDays);
 
-          console.log(`  [${assignment.type.toUpperCase()}] ${assignment.title}`);
-          console.log(`    Course: ${assignment.courseName}`);
+          const typeLabel = assignment.type.charAt(0).toUpperCase() + assignment.type.slice(1);
+          console.log(`  ${assignment.courseName} - ${typeLabel} - ${assignment.title}`);
           console.log(`    Due: ${assignment.dueDate.toLocaleDateString()} at ${assignment.dueDate.toLocaleTimeString()}`);
           console.log(`    Remind: ${remindDate.toLocaleDateString()} (${config.reminders.advanceDays} days before)`);
           console.log('');
