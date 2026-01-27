@@ -1,12 +1,12 @@
 # deadline-sync
 
-Automatically sync Brightspace course deadlines to Apple Reminders. Supports both automated scraping from Brightspace and manual syllabus PDF parsing.
+Automatically sync Brightspace course deadlines to Apple Reminders. Supports both automated scraping from Brightspace and manual syllabus parsing.
 
 ## Features
 
 - **Brightspace Integration**: Automatically fetches assignments, quizzes, and calendar events from all enrolled courses
 - **Semester Filtering**: Only syncs courses from the current semester (Winter, Spring/Summer, Fall)
-- **Syllabus Parsing**: Extract dates from PDF syllabi with intelligent date detection
+- **Syllabus Parsing**: Extract dates from syllabus files (PDF, .docx, .doc) with intelligent date detection
 - **Duplicate Prevention**: Tracks synced items to avoid creating duplicate reminders
 - **Apple Reminders**: Creates reminders with due dates and advance notifications
 
@@ -71,14 +71,16 @@ bun run cli syllabus fetch --parse           # Download and parse for dates
 bun run cli syllabus fetch --parse --dry-run # Preview without creating reminders
 ```
 
-#### Manual PDF parsing
+#### Manual file parsing
 
 ```bash
-bun run cli syllabus add <file.pdf> --course "Course Name"
-bun run cli syllabus add <file.pdf> --course "Course Name" --dry-run
+bun run cli syllabus add <file> --course "Course Name"
+bun run cli syllabus add <file> --course "Course Name" --dry-run
 ```
 
-Extracts dates from a syllabus PDF and interactively creates reminders for each detected deadline.
+Extracts dates from a syllabus file and interactively creates reminders for each detected deadline.
+
+Supported file types: `.pdf`, `.docx`, `.doc`
 
 Note: Syllabus parsing focuses on non-assignment items (exams, midterms, readings, presentations) since assignments are already captured by Brightspace sync.
 

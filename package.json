@@ -12,14 +12,16 @@
     "cli": "tsx src/index.ts"
   },
   "dependencies": {
+    "chrono-node": "^2.7.0",
+    "commander": "^11.0.0",
+    "dayjs": "^1.11.0",
+    "inquirer": "^9.0.0",
+    "mammoth": "^1.11.0",
+    "pdf-parse": "^1.1.1",
     "playwright": "^1.40.0",
     "sql.js": "^1.10.0",
-    "commander": "^11.0.0",
-    "inquirer": "^9.0.0",
-    "pdf-parse": "^1.1.1",
-    "chrono-node": "^2.7.0",
     "winston": "^3.11.0",
-    "dayjs": "^1.11.0",
+    "word-extractor": "^1.0.4",
     "zod": "^3.22.0"
   },
   "devDependencies": {
