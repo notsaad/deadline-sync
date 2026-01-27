@@ -56,13 +56,31 @@ Shows session validity, total synced reminders, and upcoming deadlines.
 bun run cli status --events  # List all synced deadlines with due dates
 ```
 
-### Parse Syllabus PDF
+### Syllabus Parsing
+
+#### Auto-fetch from Brightspace
+
+```bash
+bun run cli syllabus fetch
+```
+
+Automatically finds and downloads syllabus PDFs from all enrolled courses. Searches for files named "syllabus", "course outline", "course overview", etc.
+
+```bash
+bun run cli syllabus fetch --parse           # Download and parse for dates
+bun run cli syllabus fetch --parse --dry-run # Preview without creating reminders
+```
+
+#### Manual PDF parsing
 
 ```bash
 bun run cli syllabus add <file.pdf> --course "Course Name"
+bun run cli syllabus add <file.pdf> --course "Course Name" --dry-run
 ```
 
 Extracts dates from a syllabus PDF and interactively creates reminders for each detected deadline.
+
+Note: Syllabus parsing focuses on non-assignment items (exams, midterms, readings, presentations) since assignments are already captured by Brightspace sync.
 
 ## Configuration
 
@@ -80,6 +98,7 @@ All data is stored in the `data/` directory:
 
 - `data/sync.db` - SQLite database tracking synced reminders
 - `data/session/` - Authenticated Brightspace session
+- `data/syllabi/` - Downloaded syllabus PDFs (cached)
 - `data/sync.log` - Application logs
 
 ## Requirements
