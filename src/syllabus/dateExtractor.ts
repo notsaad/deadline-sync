@@ -1,6 +1,56 @@
 import * as chrono from 'chrono-node';
 import { SyllabusDate } from '../types/index.js';
 
+// Assignment-like items that are typically already in Brightspace
+const ASSIGNMENT_PATTERNS = [
+  /\bassignment\s*\d*/i,
+  /\bhomework\s*\d*/i,
+  /\bhw\s*\d+/i,
+  /\bproblem\s*set\s*\d*/i,
+  /\blab\s*(report)?\s*\d*/i,
+  /\bworksheet\s*\d*/i,
+  /\bexercise\s*\d*/i,
+];
+
+// Non-assignment items to keep (exams, readings, etc.)
+const NON_ASSIGNMENT_PATTERNS = [
+  /\bmidterm/i,
+  /\bfinal\s*(exam)?/i,
+  /\bexam\s*\d*/i,
+  /\btest\s*\d*/i,
+  /\bquiz\s*\d*/i,
+  /\breading/i,
+  /\bpresentation/i,
+  /\bproject\s*(proposal|milestone|presentation)/i,
+  /\boffice\s*hours/i,
+  /\blecture/i,
+  /\btutorial/i,
+  /\bseminar/i,
+];
+
+/**
+ * Check if a date item looks like an assignment (which Brightspace handles)
+ */
+function isAssignmentLike(context: string, suggestedTitle: string): boolean {
+  const textToCheck = `${context} ${suggestedTitle}`.toLowerCase();
+
+  // First check if it matches non-assignment patterns (exams, readings, etc.)
+  for (const pattern of NON_ASSIGNMENT_PATTERNS) {
+    if (pattern.test(textToCheck)) {
+      return false; // Keep it - it's not an assignment
+    }
+  }
+
+  // Then check if it matches assignment patterns
+  for (const pattern of ASSIGNMENT_PATTERNS) {
+    if (pattern.test(textToCheck)) {
+      return true; // Filter it out - it's an assignment
+    }
+  }
+
+  return false; // Keep items that don't match either (generic deadlines)
+}
+
 export function extractDatesFromText(text: string, referenceDate?: Date): SyllabusDate[] {
   const results: SyllabusDate[] = [];
   const ref = referenceDate || new Date();
@@ -29,7 +79,10 @@ export function extractDatesFromText(text: string, referenceDate?: Date): Syllab
   results.push(...academicDates);
 
   // Deduplicate by date (within same day)
-  return deduplicateDates(results);
+  const deduplicated = deduplicateDates(results);
+
+  // Filter out assignment-like items (Brightspace handles those)
+  return deduplicated.filter((date) => !isAssignmentLike(date.context, date.suggestedTitle));
 }
 
 function getContext(text: string, index: number, chars: number): string {
